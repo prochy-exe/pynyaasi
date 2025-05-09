@@ -2,11 +2,37 @@ import threading
 from functools import lru_cache
 from typing import Callable
 
-import requests
+import requests, random
 
 BACKEND_FACTORY_T = Callable[[], requests.Session]
 _GLOBAL_BACKEND_FACTORY: BACKEND_FACTORY_T = requests.session
 
+def generate_user_agent():
+    """
+    Generate a random user agent string.
+
+    Returns:
+        str: A user agent string that mimics a user agent of a browser on a desktop device.
+    """
+    os_list = ['Windows NT 10.0', 'Windows NT 7.0', 'Macintosh', 'Linux x86_64']
+    browser_list = ['Chrome', 'Firefox', 'Safari', 'Edge']
+
+    os = random.choice(os_list)
+    browser = random.choice(browser_list)
+    device = 'Desktop'
+
+    if browser == 'Chrome':
+        browser_version = f'{random.randint(70, 90)}.{random.randint(0, 9)}.{random.randint(1000, 9999)}.{random.randint(0, 99)}'
+    elif browser == 'Firefox':
+        browser_version = f'{random.randint(60, 80)}.{random.randint(0, 9)}'
+    elif browser == 'Safari':
+        browser_version = f'{random.randint(10, 14)}.{random.randint(0, 9)}'
+    elif browser == 'Edge':
+        browser_version = f'{random.randint(15, 20)}.{random.randint(1000, 9999)}.{random.randint(0, 99)}'
+
+    user_agent = f'Mozilla/5.0 ({os}; {device}) AppleWebKit/537.36 (KHTML, like Gecko) {browser}/{browser_version}'
+
+    return user_agent
 
 def configure_http_backend(backend_factory: BACKEND_FACTORY_T = requests.Session) -> None:
     """
@@ -73,7 +99,9 @@ def get_session() -> requests.Session:
     session = get_session()
     ```
     """
-    return _get_session_from_cache(thread_ident=threading.get_ident())
+    cached_session = _get_session_from_cache(thread_ident=threading.get_ident())
+    cached_session.headers['User-Agent'] = generate_user_agent()
+    return cached_session
 
 
 @lru_cache(maxsize=128)  # default value for Python>=3.8. Let's keep the same for Python3.7
